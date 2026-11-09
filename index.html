@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>落とし物を拾った方へ</title>
+<style>
+  body { font-family: system-ui, "Hiragino Sans", "Yu Gothic", sans-serif; max-width: 30rem; margin: 0 auto; padding: 1.5rem 1.25rem; line-height: 1.7; color: #1d2a2f; background: #f6f8f8; }
+  h1 { font-size: 1.35rem; margin: 0 0 .5rem; }
+  p { margin: .5rem 0; }
+  button { width: 100%; padding: .9rem; font-size: 1.05rem; border: 0; border-radius: 8px; background: #0b6e6e; color: #fff; margin-top: 1rem; }
+  button:disabled { opacity: .5; }
+  textarea { width: 100%; box-sizing: border-box; padding: .6rem; font-size: 1rem; border: 1px solid #9aa9ad; border-radius: 6px; }
+  .small { font-size: .85rem; color: #55666b; }
+  #status { margin-top: 1rem; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>落とし物を拾ってくださった方へ</h1>
+  <p>ありがとうございます。持ち主に連絡が届くよう、下のボタンで現在地を知らせてください。</p>
+
+  <p class="small">メッセージ(任意。連絡先や預け先など)</p>
+  <textarea id="msg" rows="3" placeholder="例: 駅の改札で預けました"></textarea>
+
+  <button id="send">持ち主に現在地を知らせる</button>
+  <p class="small">現在地は持ち主への連絡だけに使います。許可の確認が出たら「許可」を選んでください。</p>
+  <p id="status"></p>
+
+<script>
+  // ★ Apps Script のウェブアプリURL(…/exec)に書き換える
+  const GAS_URL = 'https://script.google.com/macros/library/d/1Ym1Fpaks0K_plzDK3v2ol_FI_SoXG6ZN8SsBadn2mukDMUW-rksL_ise/2';
+
+  const ID = new URLSearchParams(location.search).get('id') || '';
+  const btn = document.getElementById('send');
+  const status = document.getElementById('status');
+
+  function post(payload) {
+    // text/plain にすると事前確認(CORSプリフライト)が不要になる
+    return fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(Object.assign({ id: ID }, payload))
+    });
+  }
+
+  // ページが開かれたことを通知
+  post({ type: 'open' }).catch(() => {});
+
+  function submit(data) {
+    post(Object.assign({ type: 'report' }, data))
+      .then(() => { status.textContent = '持ち主に送信しました。ご協力ありがとうございます。'; })
+      .catch(() => { btn.disabled = false; status.textContent = '送信に失敗しました。もう一度お試しください。'; });
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    status.textContent = '現在地を取得しています…';
+    const msg = document.getElementById('msg').value;
+
+    if (!navigator.geolocation) { submit({ msg }); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => submit({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, msg }),
+      () => submit({ msg }),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  });
+</script>
+</body>
+</html>
