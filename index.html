@@ -12,8 +12,8 @@
   p { margin: .5rem 0; }
   .tel { display: block; font-size: 1.1rem; margin: .35rem 0; color: #0b6e6e; font-weight: 600; }
   button { width: 100%; padding: .9rem; font-size: 1.05rem; border-radius: 8px; margin-top: .75rem; }
-  button.main { border: 0; background: #0b6e6e; color: #fff; }
-  button.sub { border: 2px solid #0b6e6e; background: #fff; color: #0b6e6e; }
+  button.main { border: 0; background: #2f8f8f; color: #fff; }
+  button.sub { border: 2px solid #8cc4c4; background: #e6f3f3; color: #1f6f6f; }
   button:disabled { opacity: .5; }
   textarea { width: 100%; box-sizing: border-box; padding: .6rem; font-size: 1rem; border: 1px solid #9aa9ad; border-radius: 6px; }
   .small { font-size: .85rem; color: #55666b; }
@@ -71,7 +71,11 @@
 
   function submit(data) {
     post(Object.assign({ type: 'report' }, data))
-      .then(() => { status.textContent = '家族に送信しました。ご協力ありがとうございます。'; })
+      .then(() => {
+        setBusy(false);
+        msgBox.value = '';
+        status.textContent = '家族に送信しました。ご協力ありがとうございます。追加でご連絡いただく場合は、もう一度入力して送信してください。';
+      })
       .catch(() => { setBusy(false); status.textContent = '送信に失敗しました。もう一度お試しください。'; });
   }
 
