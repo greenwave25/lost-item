@@ -9,9 +9,11 @@
   h1, h2 { background: #0b6e6e; color: #fff; padding: .45rem .75rem; border-radius: 6px; line-height: 1.5; }
   h1 { font-size: 1.15rem; margin: 0 0 .75rem; }
   h2 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
-  .tel { display: block; font-size: 1.1rem; margin: .35rem 0; color: #0b6e6e; font-weight: 600; }
   p { margin: .5rem 0; }
-  button { width: 100%; padding: .9rem; font-size: 1.05rem; border: 0; border-radius: 8px; background: #0b6e6e; color: #fff; margin-top: 1rem; }
+  .tel { display: block; font-size: 1.1rem; margin: .35rem 0; color: #0b6e6e; font-weight: 600; }
+  button { width: 100%; padding: .9rem; font-size: 1.05rem; border-radius: 8px; margin-top: .75rem; }
+  button.main { border: 0; background: #0b6e6e; color: #fff; }
+  button.sub { border: 2px solid #0b6e6e; background: #fff; color: #0b6e6e; }
   button:disabled { opacity: .5; }
   textarea { width: 100%; box-sizing: border-box; padding: .6rem; font-size: 1rem; border: 1px solid #9aa9ad; border-radius: 6px; }
   .small { font-size: .85rem; color: #55666b; }
@@ -20,12 +22,12 @@
 </head>
 <body>
   <h1>QRコードを読み取ってくださった方へ</h1>
-  <p>このコードを読み取っていただいたということは、私の大切な家族が迷子になっているか持ち物を紛失してしまった可能性があります。</p>
-  <p>もし本人が近くにいるようでしたら安全な場所での保護にご協力いただけますと幸いです。</p>
-  <p>家族一同、大変心配して探しております。現在の状況や発見場所について、小さなことでも構いませんので一言ご連絡をお願いいたします。</p>
+  <p>私の家族が迷子になっているか、持ち物を紛失している可能性があります。</p>
+  <p>本人が近くにいる場合は、安全な場所での保護にご協力ください。</p>
+  <p>家族一同、心配して探しています。状況や発見場所を、一言でもご連絡ください。</p>
 
   <h2>保護対象者</h2>
-  <p>父親(身長163cm 体重65Kg 白髪交じりの短髪、軽度の認知症、左ひざが悪く普段は杖を使っている)</p>
+  <p>父親(163cm・65kg・白髪交じりの短髪)<br>軽度の認知症があり、左ひざが悪く、杖を使っています。</p>
 
   <h2>家族の連絡先(携帯電話)</h2>
   <a class="tel" href="tel:09087559447">長男:090-8755-9447</a>
@@ -35,16 +37,22 @@
   <p class="small">現在の状況や発見場所など(一言で構いません)</p>
   <textarea id="msg" rows="4" placeholder="例: 〇〇を商店街で見つけました&#10;例: 〇〇駅の改札前で保護しています"></textarea>
 
-  <button id="send">家族に現在地を知らせる</button>
+  <button id="sendLoc" class="main">現在地とメッセージを家族に送る</button>
   <p class="small">現在地は家族への連絡だけに使います。許可の確認が出たら「許可」を選んでください。</p>
+
+  <button id="sendMsg" class="sub">メッセージだけ送る(現在地は送りません)</button>
+  <p class="small">こちらは位置情報の確認は表示されず、入力した文章だけが家族に届きます。</p>
+
   <p id="status"></p>
 
 <script>
   // ★ Apps Script のウェブアプリURL(…/exec)に書き換える
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbx15O6a1Zo8-b7rzUfx3Ta4LIxm_Zzxmi1ZNwyACTrt1nOl16goQ3k93MvI24hOg2K-/exec';
 
-  const btn = document.getElementById('send');
+  const btnLoc = document.getElementById('sendLoc');
+  const btnMsg = document.getElementById('sendMsg');
   const status = document.getElementById('status');
+  const msgBox = document.getElementById('msg');
 
   function post(payload) {
     // text/plain にすると事前確認(CORSプリフライト)が不要になる
@@ -59,16 +67,19 @@
   // ページが開かれたことを通知
   post({ type: 'open' }).catch(() => {});
 
+  function setBusy(b) { btnLoc.disabled = b; btnMsg.disabled = b; }
+
   function submit(data) {
     post(Object.assign({ type: 'report' }, data))
       .then(() => { status.textContent = '家族に送信しました。ご協力ありがとうございます。'; })
-      .catch(() => { btn.disabled = false; status.textContent = '送信に失敗しました。もう一度お試しください。'; });
+      .catch(() => { setBusy(false); status.textContent = '送信に失敗しました。もう一度お試しください。'; });
   }
 
-  btn.addEventListener('click', () => {
-    btn.disabled = true;
+  // 現在地とメッセージを送る(メッセージは空でも可)
+  btnLoc.addEventListener('click', () => {
+    setBusy(true);
     status.textContent = '現在地を取得しています…';
-    const msg = document.getElementById('msg').value;
+    const msg = msgBox.value;
 
     if (!navigator.geolocation) { submit({ msg }); return; }
     navigator.geolocation.getCurrentPosition(
@@ -76,6 +87,15 @@
       err => submit({ msg, err: err.code }),
       { enableHighAccuracy: true, timeout: 15000 }
     );
+  });
+
+  // メッセージだけ送る(位置情報は一切取得しない。空欄では送れない)
+  btnMsg.addEventListener('click', () => {
+    const msg = msgBox.value.trim();
+    if (!msg) { status.textContent = '「状況のご連絡」の欄に一言ご記入ください。'; msgBox.focus(); return; }
+    setBusy(true);
+    status.textContent = '送信しています…';
+    submit({ msg, noloc: true });
   });
 </script>
 </body>
